@@ -1,0 +1,22 @@
+{
+  "name": "fix-it-web-worker",
+  "main": "worker/index.ts",
+  "compatibility_date": "2024-12-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "DAILY_MESSAGE_LIMIT": "100"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fix-it-db",
+      "database_id": "fix-it-db-production"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "limits": {
+    "cpu_ms": 50000
+  }
+}

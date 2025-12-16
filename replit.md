@@ -10,39 +10,43 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
+**IMPORTANT: This project uses Frontend + Cloudflare Workers ONLY. There is NO Node.js backend.**
+
 ### Frontend Architecture
-- **Framework**: React 18 with TypeScript, using Vite as the build tool
+- **Framework**: React 19 with TypeScript, using Vite as the build tool
 - **Routing**: Wouter for lightweight client-side routing
 - **State Management**: TanStack React Query for server state management
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Styling**: Tailwind CSS with CSS variables for theming, supports light/dark modes
 - **Animations**: Framer Motion for page transitions and UI animations
 - **Internationalization**: Custom i18n context supporting English and Arabic with RTL support
+- **Build**: `npm run dev:client` for development (Vite), `npm run build:client` for production
 
-### Backend Architecture
-- **Runtime**: Node.js with Express.js
-- **Language**: TypeScript with ESM modules
-- **API Design**: RESTful endpoints under `/api/` prefix
-- **Security**: Helmet for HTTP headers, CORS configuration, express-rate-limit for rate limiting
-- **Validation**: express-validator for request validation
+### Backend Architecture (Cloudflare Workers)
+- **Runtime**: Cloudflare Workers (NOT Node.js)
+- **Framework**: Hono (Cloudflare Workers compatible)
+- **Entry Point**: `worker/index.ts` (the ONLY backend entry point)
+- **Database**: Cloudflare D1 (SQLite at the edge)
+- **Development**: `wrangler dev`
+- **Deployment**: `wrangler deploy`
+
+### What is NOT Used
+- ❌ NO Node.js backend
+- ❌ NO Express.js
+- ❌ NO `server/` directory
+- ❌ NO Node.js APIs (fs, http, process, path, etc.)
+- ❌ NO `@hono/node-server`
+- ❌ NO PostgreSQL (uses Cloudflare D1 instead)
 
 ### Data Storage
-- **Database**: PostgreSQL with Drizzle ORM
-- **Schema Location**: `shared/schema.ts` contains table definitions
+- **Database**: Cloudflare D1 (SQLite at the edge)
 - **Tables**: 
-  - `users` - User accounts with username/password
   - `usage_tracking` - Daily message count tracking per user for rate limiting
-- **Migrations**: Managed via drizzle-kit with `db:push` command
+- **Schema**: Defined in worker storage interface
 
 ### API Rate Limiting
-- General rate limit: 100 requests per 15 minutes
-- Chat endpoint: 10 messages per minute
-- Daily message limit: 100 messages per user (tracked in database)
-
-### Build System
-- **Development**: Vite dev server with HMR, proxied through Express
-- **Production**: esbuild bundles server code, Vite builds client assets
-- **Output**: Compiled to `dist/` directory with server as CommonJS bundle
+- Daily message limit: 100 messages per user (tracked in D1 database)
+- Configurable via `DAILY_MESSAGE_LIMIT` Cloudflare variable
 
 ### Project Structure
 ```
@@ -52,33 +56,37 @@ client/           # React frontend application
     pages/        # Route page components
     lib/          # Utilities, API client, i18n
     hooks/        # Custom React hooks
-server/           # Express backend
-  index.ts        # Server entry point
-  routes.ts       # API route definitions
-  storage.ts      # Database operations
-  static.ts       # Static file serving
-shared/           # Shared code between client/server
-  schema.ts       # Drizzle database schema
+worker/           # Cloudflare Workers backend
+  index.ts        # Worker entry point (Hono app)
+  storage.ts      # D1 database operations
+  types.ts        # TypeScript type definitions
+shared/           # Shared code
+  schema.ts       # Type definitions
+wrangler.json     # Cloudflare Workers configuration
 ```
 
-## External Dependencies
+### Environment Variables
+- `GROQ_API_KEY` - Set via `wrangler secret put GROQ_API_KEY` or Cloudflare Dashboard
+- `DAILY_MESSAGE_LIMIT` - Set in `wrangler.json` vars or Cloudflare Dashboard
 
-### AI Integration
-- The chat functionality calls an AI service through the `/api/chat` endpoint
-- API key configuration expected via environment variables (implementation uses external AI provider)
+### Development Workflow
+1. Frontend development: `npm run dev:client` (Vite dev server on port 5000)
+2. Worker development: `wrangler dev` (local Cloudflare Workers dev environment)
+3. Deployment: `wrangler deploy`
 
-### Database
-- PostgreSQL database required
-- Connection via `DATABASE_URL` environment variable
-- Uses `connect-pg-simple` for session storage capability
+### External Dependencies
 
-### Third-Party Services
+#### AI Integration
+- The chat functionality calls Groq API through the `/api/chat` endpoint
+- API key configured via Cloudflare secrets/variables
+
+#### Third-Party Services
 - **Fonts**: Google Fonts (Inter, JetBrains Mono, Cairo for Arabic)
 - **Avatar Generation**: DiceBear API for user review avatars
 - **Images**: Unsplash for stock photos in testimonials
 
-### Key NPM Packages
-- `drizzle-orm` + `drizzle-zod` for type-safe database operations
+#### Key NPM Packages
+- `hono` for Cloudflare Workers API
 - `@tanstack/react-query` for data fetching
 - `framer-motion` for animations
 - `wouter` for routing
